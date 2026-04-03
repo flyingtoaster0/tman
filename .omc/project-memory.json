@@ -62,8 +62,14 @@
   "hotPaths": [
     {
       "path": "src/main.rs",
-      "accessCount": 9,
-      "lastAccessed": 1775230291103,
+      "accessCount": 12,
+      "lastAccessed": 1775231625178,
+      "type": "file"
+    },
+    {
+      "path": "Cargo.toml",
+      "accessCount": 1,
+      "lastAccessed": 1775231408898,
       "type": "file"
     }
   ],
