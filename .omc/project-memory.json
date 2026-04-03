@@ -1,0 +1,71 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1775230164881,
+  "projectRoot": "/home/tim/workspace/tman",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Rust",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "Cargo.toml"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "cargo",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": "cargo build",
+    "testCommand": "cargo test",
+    "lintCommand": "cargo clippy",
+    "devCommand": "cargo run",
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "src"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 1,
+      "lastAccessed": 1775230164877,
+      "keyFiles": [
+        "main.rs"
+      ]
+    },
+    "target": {
+      "path": "target",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1775230164877,
+      "keyFiles": [
+        "CACHEDIR.TAG"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/main.rs",
+      "accessCount": 9,
+      "lastAccessed": 1775230291103,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}
