@@ -1,5 +1,9 @@
 # tman
 
+![tman banner](assets/tman_banner.png)
+
+![screenshot](assets/screenshot1.png)
+
 A server-side TUI tmux session manager with a **persistent sidebar and embedded terminal**, inspired by cmux's vertical tab layout. SSH in from any device and get a visual session picker alongside your live tmux session.
 
 ## How it works
