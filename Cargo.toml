@@ -1,5 +1,5 @@
 [package]
-name = "tmux-pilot"
+name = "tman"
 version = "0.2.0"
 edition = "2021"
 description = "TUI tmux session manager with persistent sidebar and embedded terminal"

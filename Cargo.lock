@@ -767,7 +767,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tmux-pilot"
+name = "tman"
 version = "0.2.0"
 dependencies = [
  "anyhow",

@@ -1,4 +1,4 @@
-//! tmux-pilot v0.3: TUI tmux session manager with persistent sidebar, embedded
+//! tman: TUI tmux session manager with persistent sidebar, embedded
 //! terminal, and SSH remote session management.
 //!
 //! The sidebar stays visible at all times. The main area embeds a real PTY
@@ -6,10 +6,10 @@
 //! forwarded to the PTY in terminal mode; Ctrl+G toggles sidebar focus for
 //! navigation.
 //!
-//! Remote hosts are configured in `~/.config/tmux-pilot/config.toml` and their
+//! Remote hosts are configured in `~/.config/tman/config.toml` and their
 //! tmux sessions appear alongside local ones, grouped by host.
 //!
-//! Usage: `cargo build --release && ./target/release/tmux-pilot`
+//! Usage: `cargo build --release && ./target/release/tman`
 //!
 //! Keybindings:
 //!   Ctrl+G          Toggle sidebar/terminal focus
@@ -20,7 +20,7 @@
 //!   (Sidebar) r      Refresh session list
 //!   (Sidebar) a      Add SSH host
 //!   (Sidebar) d      Remove SSH host (when header selected)
-//!   (Sidebar) q      Quit tmux-pilot
+//!   (Sidebar) q      Quit tman
 //!   (Terminal)       All keys forwarded to tmux session
 
 mod config;
