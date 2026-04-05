@@ -1,8 +1,11 @@
 [package]
 name = "tman"
-version = "0.2.0"
+version = "0.1.0"
 edition = "2021"
 description = "TUI tmux session manager with persistent sidebar and embedded terminal"
+repository = "https://github.com/flyingtoaster0/tman"
+homepage = "https://github.com/flyingtoaster0/tman"
+license = "MIT"
 
 [dependencies]
 ratatui = "0.29"
@@ -13,5 +16,10 @@ portable-pty = "0.8"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 dirs = "6"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
 
 

@@ -33,7 +33,22 @@ The sidebar is **always visible**. The main area is a real embedded terminal run
 - Keyboard input is converted to PTY bytes and written to the PTY's stdin
 - The sidebar runs standard ratatui widgets alongside the terminal
 
-## Build & run
+## Installation
+
+### Homebrew
+
+```bash
+brew tap flyingtoaster0/tman
+brew install tman
+```
+
+### Cargo
+
+```bash
+cargo install tman
+```
+
+### From source
 
 ```bash
 cargo build --release
