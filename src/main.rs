@@ -35,7 +35,10 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use anyhow::Result;
 use crossterm::{
-    event::{self, Event, KeyCode, KeyEvent, KeyModifiers},
+    event::{
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
+        MouseEvent, MouseEventKind,
+    },
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
@@ -1257,6 +1260,7 @@ fn main() -> Result<()> {
 
     enable_raw_mode()?;
     io::stdout().execute(EnterAlternateScreen)?;
+    io::stdout().execute(EnableMouseCapture)?;
 
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     let mut app = App::new();
@@ -1279,13 +1283,16 @@ fn main() -> Result<()> {
         if !event::poll(Duration::from_millis(16))? {
             continue;
         }
-        if let Event::Key(key) = event::read()? {
-            handle_key(&mut app, key);
+        match event::read()? {
+            Event::Key(key) => handle_key(&mut app, key),
+            Event::Mouse(mouse) => handle_mouse(&mut app, mouse),
+            _ => {}
         }
     }
 
     drop(app.terminal);
     disable_raw_mode()?;
+    io::stdout().execute(DisableMouseCapture)?;
     io::stdout().execute(LeaveAlternateScreen)?;
     Ok(())
 }
@@ -1385,5 +1392,35 @@ fn handle_key(app: &mut App, key: KeyEvent) {
             KeyCode::Esc if app.terminal.is_some() => app.focus = Focus::Terminal,
             _ => {}
         },
+    }
+}
+
+fn handle_mouse(app: &mut App, mouse: MouseEvent) {
+    match mouse.kind {
+        MouseEventKind::ScrollUp => match app.focus {
+            Focus::Terminal => {
+                if let Some(t) = &mut app.terminal {
+                    // SGR mouse encoding for scroll up (button 64), 1-indexed coordinates
+                    let col = mouse.column.saturating_add(1);
+                    let row = mouse.row.saturating_add(1);
+                    let seq = format!("\x1b[<64;{};{}M", col, row);
+                    t.write_bytes(seq.as_bytes());
+                }
+            }
+            Focus::Sidebar => app.previous(),
+        },
+        MouseEventKind::ScrollDown => match app.focus {
+            Focus::Terminal => {
+                if let Some(t) = &mut app.terminal {
+                    // SGR mouse encoding for scroll down (button 65), 1-indexed coordinates
+                    let col = mouse.column.saturating_add(1);
+                    let row = mouse.row.saturating_add(1);
+                    let seq = format!("\x1b[<65;{};{}M", col, row);
+                    t.write_bytes(seq.as_bytes());
+                }
+            }
+            Focus::Sidebar => app.next(),
+        },
+        _ => {}
     }
 }
