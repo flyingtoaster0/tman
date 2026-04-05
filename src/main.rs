@@ -465,7 +465,7 @@ fn key_to_pty_bytes(key: &KeyEvent) -> Vec<u8> {
         KeyCode::Enter => vec![b'\r'],
         KeyCode::Backspace => vec![127],
         KeyCode::Esc => vec![0x1b],
-        KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => vec![0x1b, b'[', b'Z'],
+        KeyCode::BackTab => vec![0x1b, b'[', b'Z'],
         KeyCode::Tab => vec![b'\t'],
         KeyCode::Up => vec![0x1b, b'[', b'A'],
         KeyCode::Down => vec![0x1b, b'[', b'B'],
