@@ -14,7 +14,8 @@
 //! Keybindings:
 //!   Ctrl+G          Toggle sidebar/terminal focus
 //!   (Sidebar) j/k   Navigate sessions
-//!   (Sidebar) Enter  Attach to selected session
+//!   (Sidebar) Enter  Attach to selected session (embedded)
+//!   (Sidebar) o      Exit tman and attach directly to selected session
 //!   (Sidebar) n      Create new session (on selected host)
 //!   (Sidebar) x      Kill selected session
 //!   (Sidebar) r      Refresh session list
@@ -49,7 +50,8 @@ use ratatui::widgets::ListState;
 use config::{load_config, save_config, Config, HostConfig};
 use terminal::{key_to_pty_bytes, EmbeddedTerminal};
 use tmux::{
-    get_local_sessions, get_remote_sessions, ssh_tmux_cmd, tmux_cmd, RemoteResult, TmuxSession,
+    build_ssh_command, get_local_sessions, get_remote_sessions, ssh_tmux_cmd, tmux_cmd,
+    RemoteResult, TmuxSession,
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -113,6 +115,7 @@ pub struct App {
     pub terminal: Option<EmbeddedTerminal>,
     pub last_refresh: Instant,
     pub should_quit: bool,
+    pub quit_and_attach: Option<TmuxSession>,
     pub term_rows: u16,
     pub term_cols: u16,
     // Remote fetch state
@@ -137,6 +140,7 @@ impl App {
             terminal: None,
             last_refresh: Instant::now() - Duration::from_secs(10),
             should_quit: false,
+            quit_and_attach: None,
             term_rows: 24,
             term_cols: 80,
             remote_tx: tx,
@@ -473,6 +477,13 @@ impl App {
         }
     }
 
+    fn attach_selected_and_quit(&mut self) {
+        if let Some(session) = self.selected_session() {
+            self.quit_and_attach = Some(session.clone());
+            self.should_quit = true;
+        }
+    }
+
     fn check_terminal_alive(&mut self) {
         if self.terminal.as_ref().is_some_and(|t| !t.is_alive()) {
             self.terminal = None;
@@ -524,10 +535,32 @@ fn main() -> Result<()> {
         }
     }
 
+    let quit_and_attach = app.quit_and_attach.take();
+    let quit_host_config = quit_and_attach
+        .as_ref()
+        .and_then(|s| app.host_config(&s.host).cloned());
     drop(app.terminal);
     disable_raw_mode()?;
     io::stdout().execute(DisableMouseCapture)?;
     io::stdout().execute(LeaveAlternateScreen)?;
+
+    if let Some(session) = quit_and_attach {
+        use std::os::unix::process::CommandExt;
+        let err = if session.host == "local" {
+            std::process::Command::new("tmux")
+                .args(["attach-session", "-t", &session.name])
+                .exec()
+        } else if let Some(hc) = quit_host_config {
+            let mut cmd = build_ssh_command(&hc);
+            cmd.arg("-t");
+            cmd.arg(format!("tmux attach-session -t {}", tmux::shell_escape(&session.name)));
+            cmd.exec()
+        } else {
+            return Err(anyhow::anyhow!("unknown host: {}", session.host));
+        };
+        return Err(anyhow::anyhow!("exec failed: {}", err));
+    }
+
     Ok(())
 }
 
@@ -607,6 +640,7 @@ fn handle_key(app: &mut App, key: KeyEvent) {
             KeyCode::Down | KeyCode::Char('j') => app.next(),
             KeyCode::Up | KeyCode::Char('k') => app.previous(),
             KeyCode::Enter => app.attach_selected(),
+            KeyCode::Char('o') => app.attach_selected_and_quit(),
             KeyCode::Char('n') => app.mode = InputMode::NewSession(String::new()),
             KeyCode::Char('x') => app.kill_selected(),
             KeyCode::Char('r') => {

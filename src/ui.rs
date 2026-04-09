@@ -182,6 +182,7 @@ fn render_status(frame: &mut Frame, app: &App, area: Rect) {
         Focus::Terminal => &[("^G", "Sidebar")],
         Focus::Sidebar => &[
             ("Ret", "Attach"),
+            ("o", "Open"),
             ("n", "New"),
             ("x", "Kill"),
             ("a", "Host+"),
