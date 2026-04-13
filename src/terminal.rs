@@ -265,3 +265,35 @@ pub fn key_to_pty_bytes(key: &KeyEvent) -> Vec<u8> {
         _ => vec![],
     }
 }
+
+pub fn paste_to_pty_bytes(text: &str) -> Vec<u8> {
+    let mut bytes = Vec::with_capacity(text.len() + 12);
+    bytes.extend_from_slice(b"\x1b[200~");
+    bytes.extend_from_slice(text.as_bytes());
+    bytes.extend_from_slice(b"\x1b[201~");
+    bytes
+}
+
+#[cfg(test)]
+mod tests {
+    use super::paste_to_pty_bytes;
+
+    #[test]
+    fn bracketed_paste_wraps_multiline_text_without_rewriting_newlines() {
+        let pasted = "first line\nsecond line\nthird line";
+        let bytes = paste_to_pty_bytes(pasted);
+
+        assert_eq!(
+            bytes,
+            b"\x1b[200~first line\nsecond line\nthird line\x1b[201~"
+        );
+    }
+
+    #[test]
+    fn bracketed_paste_preserves_carriage_return_newline_pairs() {
+        let pasted = "first line\r\nsecond line";
+        let bytes = paste_to_pty_bytes(pasted);
+
+        assert_eq!(bytes, b"\x1b[200~first line\r\nsecond line\x1b[201~");
+    }
+}

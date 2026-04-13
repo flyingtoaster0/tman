@@ -41,7 +41,11 @@ pub fn ui(frame: &mut Frame, app: &mut App) {
 
 fn render_sidebar(frame: &mut Frame, app: &mut App, area: Rect) {
     let focused = app.focus == Focus::Sidebar;
-    let border_color = if focused { Color::Cyan } else { Color::DarkGray };
+    let border_color = if focused {
+        Color::Cyan
+    } else {
+        Color::DarkGray
+    };
     let active_session = app
         .terminal
         .as_ref()
@@ -53,15 +57,9 @@ fn render_sidebar(frame: &mut Frame, app: &mut App, area: Rect) {
         .map(|entry| match entry {
             SidebarEntry::HostHeader { name, status } => {
                 let status_icon = match status {
-                    HostStatus::Ok => {
-                        Span::styled(" ◆", Style::default().fg(Color::Green))
-                    }
-                    HostStatus::Fetching => {
-                        Span::styled(" ◇", Style::default().fg(Color::Yellow))
-                    }
-                    HostStatus::Error(_) => {
-                        Span::styled(" ✗", Style::default().fg(Color::Red))
-                    }
+                    HostStatus::Ok => Span::styled(" ◆", Style::default().fg(Color::Green)),
+                    HostStatus::Fetching => Span::styled(" ◇", Style::default().fg(Color::Yellow)),
+                    HostStatus::Error(_) => Span::styled(" ✗", Style::default().fg(Color::Red)),
                 };
                 let label = format!("── {} ", name);
                 let line = Line::from(vec![
@@ -71,8 +69,7 @@ fn render_sidebar(frame: &mut Frame, app: &mut App, area: Rect) {
                 ListItem::new(vec![line])
             }
             SidebarEntry::Session(s) => {
-                let is_active =
-                    active_session == Some((s.host.as_str(), s.name.as_str()));
+                let is_active = active_session == Some((s.host.as_str(), s.name.as_str()));
                 let dot = if s.attached { " ●" } else { "" };
                 let name_style = if is_active {
                     Style::default().fg(Color::Cyan).bold()
@@ -94,7 +91,11 @@ fn render_sidebar(frame: &mut Frame, app: &mut App, area: Rect) {
         })
         .collect();
 
-    let title = if focused { " ⣿ PILOT " } else { " ⣿ pilot " };
+    let title = if focused {
+        " ⣿ PILOT "
+    } else {
+        " ⣿ pilot "
+    };
     let list = List::new(items)
         .block(
             Block::default()
@@ -103,12 +104,7 @@ fn render_sidebar(frame: &mut Frame, app: &mut App, area: Rect) {
                 .borders(Borders::ALL)
                 .border_style(Style::default().fg(border_color)),
         )
-        .highlight_style(
-            Style::default()
-                .bg(Color::DarkGray)
-                .fg(Color::White)
-                .bold(),
-        )
+        .highlight_style(Style::default().bg(Color::DarkGray).fg(Color::White).bold())
         .highlight_symbol("▸")
         .highlight_spacing(HighlightSpacing::Always);
 
@@ -117,7 +113,11 @@ fn render_sidebar(frame: &mut Frame, app: &mut App, area: Rect) {
 
 fn render_main(frame: &mut Frame, app: &mut App, area: Rect) {
     let focused = app.focus == Focus::Terminal;
-    let border_color = if focused { Color::Cyan } else { Color::DarkGray };
+    let border_color = if focused {
+        Color::Cyan
+    } else {
+        Color::DarkGray
+    };
 
     if app.terminal.is_some() {
         let t = app.terminal.as_ref().unwrap();
@@ -135,7 +135,10 @@ fn render_main(frame: &mut Frame, app: &mut App, area: Rect) {
         frame.render_widget(block, area);
 
         app.update_term_size(inner.height, inner.width);
-        app.terminal.as_ref().unwrap().render(inner, frame.buffer_mut());
+        app.terminal
+            .as_ref()
+            .unwrap()
+            .render(inner, frame.buffer_mut());
     } else {
         let block = Block::default()
             .title(" terminal ")

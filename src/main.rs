@@ -38,8 +38,8 @@ use std::time::{Duration, Instant};
 use anyhow::Result;
 use crossterm::{
     event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEvent, KeyModifiers,
-        MouseEvent, MouseEventKind,
+        self, DisableBracketedPaste, DisableMouseCapture, EnableBracketedPaste, EnableMouseCapture,
+        Event, KeyCode, KeyEvent, KeyModifiers, MouseEvent, MouseEventKind,
     },
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
@@ -48,11 +48,32 @@ use ratatui::prelude::*;
 use ratatui::widgets::ListState;
 
 use config::{load_config, save_config, Config, HostConfig};
-use terminal::{key_to_pty_bytes, EmbeddedTerminal};
+use terminal::{key_to_pty_bytes, paste_to_pty_bytes, EmbeddedTerminal};
 use tmux::{
     build_ssh_command, get_local_sessions, get_remote_sessions, ssh_tmux_cmd, tmux_cmd,
     RemoteResult, TmuxSession,
 };
+
+struct TerminalUiGuard;
+
+impl TerminalUiGuard {
+    fn enter() -> Result<Self> {
+        enable_raw_mode()?;
+        io::stdout().execute(EnterAlternateScreen)?;
+        io::stdout().execute(EnableBracketedPaste)?;
+        io::stdout().execute(EnableMouseCapture)?;
+        Ok(Self)
+    }
+}
+
+impl Drop for TerminalUiGuard {
+    fn drop(&mut self) {
+        let _ = disable_raw_mode();
+        let _ = io::stdout().execute(DisableBracketedPaste);
+        let _ = io::stdout().execute(DisableMouseCapture);
+        let _ = io::stdout().execute(LeaveAlternateScreen);
+    }
+}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // SIDEBAR ENTRIES
@@ -60,10 +81,7 @@ use tmux::{
 
 #[derive(Clone, Debug)]
 pub enum SidebarEntry {
-    HostHeader {
-        name: String,
-        status: HostStatus,
-    },
+    HostHeader { name: String, status: HostStatus },
     Session(TmuxSession),
 }
 
@@ -169,7 +187,9 @@ impl App {
     }
 
     fn rebuild_entries(&mut self) {
-        let prev_session = self.selected_session().map(|s| (s.host.clone(), s.name.clone()));
+        let prev_session = self
+            .selected_session()
+            .map(|s| (s.host.clone(), s.name.clone()));
         self.entries.clear();
 
         // Local sessions
@@ -202,9 +222,9 @@ impl App {
 
         // Restore selection
         if let Some((host, name)) = prev_session {
-            if let Some(idx) = self.entries.iter().position(|e| {
-                matches!(e, SidebarEntry::Session(s) if s.host == host && s.name == name)
-            }) {
+            if let Some(idx) = self.entries.iter().position(
+                |e| matches!(e, SidebarEntry::Session(s) if s.host == host && s.name == name),
+            ) {
                 self.list_state.select(Some(idx));
                 return;
             }
@@ -248,10 +268,7 @@ impl App {
         let host_name = host.name.clone();
         thread::spawn(move || {
             let result = get_remote_sessions(&host);
-            let _ = tx.send(RemoteResult {
-                host_name,
-                result,
-            });
+            let _ = tx.send(RemoteResult { host_name, result });
         });
     }
 
@@ -264,14 +281,12 @@ impl App {
                 Ok(sessions) => {
                     self.remote_status
                         .insert(result.host_name.clone(), HostStatus::Ok);
-                    self.remote_sessions
-                        .insert(result.host_name, sessions);
+                    self.remote_sessions.insert(result.host_name, sessions);
                 }
                 Err(err) => {
                     self.remote_status
                         .insert(result.host_name.clone(), HostStatus::Error(err));
-                    self.remote_sessions
-                        .insert(result.host_name, vec![]);
+                    self.remote_sessions.insert(result.host_name, vec![]);
                 }
             }
             changed = true;
@@ -336,9 +351,11 @@ impl App {
         };
 
         // Don't re-attach if already on this session
-        if self.terminal.as_ref().is_some_and(|t| {
-            t.session_name == session.name && t.host == session.host
-        }) {
+        if self
+            .terminal
+            .as_ref()
+            .is_some_and(|t| t.session_name == session.name && t.host == session.host)
+        {
             self.focus = Focus::Terminal;
             return;
         }
@@ -368,9 +385,11 @@ impl App {
         }
         self.refresh();
         // Select and attach the new session
-        if let Some(idx) = self.entries.iter().position(|e| {
-            matches!(e, SidebarEntry::Session(s) if s.name == name && s.host == host)
-        }) {
+        if let Some(idx) = self
+            .entries
+            .iter()
+            .position(|e| matches!(e, SidebarEntry::Session(s) if s.name == name && s.host == host))
+        {
             self.list_state.select(Some(idx));
             self.attach_selected();
         }
@@ -382,9 +401,11 @@ impl App {
             None => return,
         };
 
-        if self.terminal.as_ref().is_some_and(|t| {
-            t.session_name == session.name && t.host == session.host
-        }) {
+        if self
+            .terminal
+            .as_ref()
+            .is_some_and(|t| t.session_name == session.name && t.host == session.host)
+        {
             self.terminal = None;
         }
 
@@ -452,11 +473,7 @@ impl App {
             return;
         }
         // Drop terminal if attached to a session on this host
-        if self
-            .terminal
-            .as_ref()
-            .is_some_and(|t| t.host == name)
-        {
+        if self.terminal.as_ref().is_some_and(|t| t.host == name) {
             self.terminal = None;
         }
         self.config.hosts.retain(|h| h.name != name);
@@ -503,9 +520,7 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    enable_raw_mode()?;
-    io::stdout().execute(EnterAlternateScreen)?;
-    io::stdout().execute(EnableMouseCapture)?;
+    let _ui_guard = TerminalUiGuard::enter()?;
 
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     let mut app = App::new();
@@ -530,6 +545,7 @@ fn main() -> Result<()> {
         }
         match event::read()? {
             Event::Key(key) => handle_key(&mut app, key),
+            Event::Paste(text) => handle_paste(&mut app, &text),
             Event::Mouse(mouse) => handle_mouse(&mut app, mouse),
             _ => {}
         }
@@ -540,9 +556,7 @@ fn main() -> Result<()> {
         .as_ref()
         .and_then(|s| app.host_config(&s.host).cloned());
     drop(app.terminal);
-    disable_raw_mode()?;
-    io::stdout().execute(DisableMouseCapture)?;
-    io::stdout().execute(LeaveAlternateScreen)?;
+    drop(terminal);
 
     if let Some(session) = quit_and_attach {
         use std::os::unix::process::CommandExt;
@@ -553,7 +567,10 @@ fn main() -> Result<()> {
         } else if let Some(hc) = quit_host_config {
             let mut cmd = build_ssh_command(&hc);
             cmd.arg("-t");
-            cmd.arg(format!("tmux attach-session -t {}", tmux::shell_escape(&session.name)));
+            cmd.arg(format!(
+                "tmux attach-session -t {}",
+                tmux::shell_escape(&session.name)
+            ));
             cmd.exec()
         } else {
             return Err(anyhow::anyhow!("unknown host: {}", session.host));
@@ -663,6 +680,32 @@ fn handle_key(app: &mut App, key: KeyEvent) {
     }
 }
 
+fn handle_paste(app: &mut App, text: &str) {
+    match &mut app.mode {
+        InputMode::NewSession(input) => {
+            input.extend(
+                text.chars()
+                    .filter(|c| c.is_alphanumeric() || "-_.".contains(*c)),
+            );
+        }
+        InputMode::AddHost(input) => {
+            input.extend(text.chars().filter(|c| *c != '\r' && *c != '\n'));
+        }
+        InputMode::ConfirmDeleteHost(_) => {}
+        InputMode::Normal => match app.focus {
+            Focus::Terminal => {
+                if let Some(t) = &mut app.terminal {
+                    let bytes = paste_to_pty_bytes(text);
+                    if !bytes.is_empty() {
+                        t.write_bytes(&bytes);
+                    }
+                }
+            }
+            Focus::Sidebar => {}
+        },
+    }
+}
+
 fn handle_mouse(app: &mut App, mouse: MouseEvent) {
     let scroll_button = match mouse.kind {
         MouseEventKind::ScrollUp => Some(64),
@@ -681,7 +724,11 @@ fn handle_mouse(app: &mut App, mouse: MouseEvent) {
                 }
             }
             Focus::Sidebar => {
-                if button == 64 { app.previous() } else { app.next() }
+                if button == 64 {
+                    app.previous()
+                } else {
+                    app.next()
+                }
             }
         }
     }
