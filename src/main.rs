@@ -520,7 +520,7 @@ fn main() -> Result<()> {
         std::process::exit(1);
     }
 
-    let _ui_guard = TerminalUiGuard::enter()?;
+    let ui_guard = TerminalUiGuard::enter()?;
 
     let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
     let mut app = App::new();
@@ -557,6 +557,10 @@ fn main() -> Result<()> {
         .and_then(|s| app.host_config(&s.host).cloned());
     drop(app.terminal);
     drop(terminal);
+    // Restore the host terminal state before exec() — exec replaces the process
+    // image and skips all Drop impls, so TerminalUiGuard would otherwise leak raw
+    // mode, bracketed paste, and mouse capture back to the shell on detach.
+    drop(ui_guard);
 
     if let Some(session) = quit_and_attach {
         use std::os::unix::process::CommandExt;
